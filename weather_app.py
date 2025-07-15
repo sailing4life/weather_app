@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import streamlit as st
-from datetime import datetime, time
+from datetime import datetime
 
 st.set_page_config(layout="wide", page_title="Weather Plotter")
 
@@ -25,15 +25,15 @@ if uploaded_file:
             # Select model name
             model_name = st.text_input("Enter model name", value="UM-Global")
 
-            # Time filter
-            st.subheader("Time Filter")
-            min_time = time(0, 0)
-            max_time = time(23, 59)
-            start_time = st.time_input("Start time", value=time(8, 0))
-            end_time = st.time_input("End time", value=time(20, 0))
+            # Date filter
+            st.subheader("Date Filter")
+            min_date = df['Time'].dt.date.min()
+            max_date = df['Time'].dt.date.max()
+            date_range = st.date_input("Select date range", [min_date, max_date])
 
-            # Filter rows by time-of-day
-            df = df[df['Time'].dt.time.between(start_time, end_time)]
+            if isinstance(date_range, list) and len(date_range) == 2:
+                start_date, end_date = date_range
+                df = df[df['Time'].dt.date.between(start_date, end_date)]
 
             # Select required columns
             try:

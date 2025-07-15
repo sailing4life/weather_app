@@ -1,95 +1,98 @@
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import streamlit as st
-from datetime import datetime, time
+from datetime import datetime
+import matplotlib.colors as mcolors
 
-st.set_page_config(layout="wide", page_title="Weather Plotter")
+st.title("Weather Data Visualization App")
 
-st.title("Weather Data Viewer")
+# Upload CSV file
+uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 
-# Upload CSV
-uploaded_file = st.file_uploader("Upload a weather CSV file", type=["csv"])
 if uploaded_file:
-    try:
-        df = pd.read_csv(uploaded_file, encoding='latin1')
-        df.columns = df.columns.str.replace('°', 'deg')  # Clean column names
-        st.subheader("Available Columns")
-        st.write(df.columns.tolist())
+    # Read CSV, replace ° symbol from columns
+    df = pd.read_csv(uploaded_file, encoding='latin1')
+    df.columns = df.columns.str.replace('°', 'deg')
 
-        # Parse time
-        if 'W. Europe Daylight Time' in df.columns:
-            df['Time'] = pd.to_datetime(df['W. Europe Daylight Time'], errors='coerce')
-            df = df.dropna(subset=['Time'])
+    # Parse time column
+    df['Time'] = pd.to_datetime(df['W. Europe Daylight Time'], utc=True, errors='coerce')
+    df = df.dropna(subset=['Time'])
 
-            # Date filter
-            st.subheader("Date Filter")
-            min_date = df['Time'].dt.date.min()
-            max_date = df['Time'].dt.date.max()
-            date_range = st.date_input("Select date range", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+    # Show columns for user info
+    st.write("Columns detected:")
+    st.write(df.columns.tolist())
 
-            # Time filter
-            st.subheader("Time Filter")
-            start_time = st.time_input("Start time", value=time(8, 0))
-            end_time = st.time_input("End time", value=time(20, 0))
+    # Input model name
+    model_name = st.text_input("Enter model name:", "UM-Global")
 
-            # Filter by date range first
-            if isinstance(date_range, tuple) or isinstance(date_range, list):
-                start_date, end_date = date_range
-                df = df[(df['Time'].dt.date >= start_date) & (df['Time'].dt.date <= end_date)]
-            else:
-                # If only one date selected, filter that day only
-                df = df[df['Time'].dt.date == date_range]
+    # Select time range to display
+    min_time = df['Time'].min()
+    max_time = df['Time'].max()
+    start_time, end_time = st.slider(
+        "Select time range to display:",
+        min_value=min_time,
+        max_value=max_time,
+        value=(min_time, max_time),
+        format="YYYY-MM-DD HH:mm"
+    )
 
-            # Then filter by time of day
-            df = df[df['Time'].dt.time.between(start_time, end_time)]
+    # Filter data by time range
+    df_filtered = df[(df['Time'] >= start_time) & (df['Time'] <= end_time)]
 
-            # Select required columns
-            try:
-                df['TWS'] = df['kt']
-                df['TWD'] = df['Wind10m deg']
-                df['Gust'] = df['kt.3']
-            except KeyError as e:
-                st.error(f"Missing expected column: {e}")
-                st.stop()
+    # Prepare columns for plotting
+    df_filtered['TWS'] = pd.to_numeric(df_filtered['kt'], errors='coerce')
+    df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind10m deg'], errors='coerce')
+    df_filtered['Gust'] = pd.to_numeric(df_filtered['kt.3'], errors='coerce')
 
-            df = df.dropna(subset=['TWD', 'TWS', 'Gust'])
+    # Drop rows with missing TWS or TWD or Gust
+    df_filtered = df_filtered.dropna(subset=['TWS', 'TWD', 'Gust'])
 
-            # Plotting
-            fig, ax1 = plt.subplots(figsize=(12, 6))
+    # Plotting
+    fig, ax1 = plt.subplots(figsize=(10, 6))
 
-            model_name = st.text_input("Enter model name", value="UM-Global")
+    ax1.set_title(f'TWS/Direction - Model: {model_name}', fontsize=14)
+    ax1.set_xlabel('Time')
+    ax1.set_ylabel('TWS / Gust (kt)', color='blue')
 
-            ax1.set_title(f"TWS / Direction\nModel: {model_name}", fontsize=14)
-            ax1.set_xlabel("Time")
-            ax1.set_ylabel("TWS / Gust (kt)", color='blue')
+    ax1.plot(df_filtered['Time'], df_filtered['TWS'], 'b-', marker='.', label='TWS')
+    ax1.plot(df_filtered['Time'], df_filtered['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
 
-            ax1.plot(df['Time'], df['TWS'], 'b-', marker='.', label='TWS')
-            ax1.plot(df['Time'], df['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
-            ax1.tick_params(axis='y', labelcolor='blue')
-            ax1.grid(True, which='both', axis='both', linestyle='--', linewidth=0.5)
+    ax1.tick_params(axis='y', labelcolor='blue')
+    ax1.grid(True, which='both', axis='both', linestyle='--', linewidth=0.5)
 
-            # Add value labels
-            for x, y in zip(df['Time'], df['TWS']):
-                ax1.text(x, y + 0.3, f'{y:.1f}', color='blue', fontsize=8, ha='center')
-            for x, y in zip(df['Time'], df['Gust']):
-                ax1.text(x, y + 0.3, f'{y:.1f}', color='lightblue', fontsize=8, ha='center')
+    # Labels for TWS points
+    for x, y in zip(df_filtered['Time'], df_filtered['TWS']):
+        ax1.text(x, y + 0.3, f'{y:.1f}', color='blue', fontsize=8, ha='center')
 
-            # Right Y-axis: TWD
-            ax2 = ax1.twinx()
-            ax2.set_ylabel("TWD (°)", color='red')
-            ax2.plot(df['Time'], df['TWD'], 'r-', marker='.', label='TWD')
-            ax2.tick_params(axis='y', labelcolor='red')
+    # Labels for Gust points
+    for x, y in zip(df_filtered['Time'], df_filtered['Gust']):
+        ax1.text(x, y + 0.3, f'{y:.1f}', color='lightblue', fontsize=8, ha='center')
 
-            for x, y in zip(df['Time'], df['TWD']):
-                ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('TWD (°)', color='red')
+    ax2.plot(df_filtered['Time'], df_filtered['TWD'], 'r-', marker='.', label='TWD')
+    ax2.tick_params(axis='y', labelcolor='red')
 
-            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M\n%b-%d'))
-            fig.autofmt_xdate()
+    # Labels for TWD points
+    for x, y in zip(df_filtered['Time'], df_filtered['TWD']):
+        ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
 
-            st.pyplot(fig)
-        else:
-            st.error("The file must contain a 'W. Europe Daylight Time' column.")
+    # Format X-axis: only date and time
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+    fig.autofmt_xdate()
 
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
+    st.pyplot(fig)
+
+    # Data Table with color gradient on TWS
+    st.subheader("Filtered Data Table")
+    display_df = df_filtered[['Time', 'TWS', 'TWD', 'Gust']].copy()
+    display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
+
+    cmap = mcolors.LinearSegmentedColormap.from_list('blue_green_red', ['blue', 'green', 'red'])
+    styled_df = display_df.style.background_gradient(cmap=cmap, subset=['TWS'], axis=0, vmin=display_df['TWS'].min(), vmax=display_df['TWS'].max())
+
+    st.dataframe(styled_df)
+
+else:
+    st.info("Please upload a CSV file to start.")

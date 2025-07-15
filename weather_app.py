@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, time
 
 st.set_page_config(layout="wide", page_title="Weather Plotter")
 
@@ -22,18 +22,27 @@ if uploaded_file:
             df['Time'] = pd.to_datetime(df['W. Europe Daylight Time'], errors='coerce')
             df = df.dropna(subset=['Time'])
 
-            # Select model name
-            model_name = st.text_input("Enter model name", value="UM-Global")
-
             # Date filter
             st.subheader("Date Filter")
             min_date = df['Time'].dt.date.min()
             max_date = df['Time'].dt.date.max()
-            date_range = st.date_input("Select date range", [min_date, max_date])
+            date_range = st.date_input("Select date range", value=(min_date, max_date), min_value=min_date, max_value=max_date)
 
-            if isinstance(date_range, list) and len(date_range) == 2:
+            # Time filter
+            st.subheader("Time Filter")
+            start_time = st.time_input("Start time", value=time(8, 0))
+            end_time = st.time_input("End time", value=time(20, 0))
+
+            # Filter by date range first
+            if isinstance(date_range, tuple) or isinstance(date_range, list):
                 start_date, end_date = date_range
-                df = df[df['Time'].dt.date.between(start_date, end_date)]
+                df = df[(df['Time'].dt.date >= start_date) & (df['Time'].dt.date <= end_date)]
+            else:
+                # If only one date selected, filter that day only
+                df = df[df['Time'].dt.date == date_range]
+
+            # Then filter by time of day
+            df = df[df['Time'].dt.time.between(start_time, end_time)]
 
             # Select required columns
             try:
@@ -48,6 +57,8 @@ if uploaded_file:
 
             # Plotting
             fig, ax1 = plt.subplots(figsize=(12, 6))
+
+            model_name = st.text_input("Enter model name", value="UM-Global")
 
             ax1.set_title(f"TWS / Direction\nModel: {model_name}", fontsize=14)
             ax1.set_xlabel("Time")
@@ -73,7 +84,7 @@ if uploaded_file:
             for x, y in zip(df['Time'], df['TWD']):
                 ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
 
-            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M\n%b-%d'))
             fig.autofmt_xdate()
 
             st.pyplot(fig)

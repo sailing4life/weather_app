@@ -87,7 +87,8 @@ if uploaded_file:
         display_df = df_filtered[['Time', 'TWD', 'TWS', 'Gust']].copy()
         display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
 
-        # Format TWS and Gust to one decimal place in table display
+        # Format TWD, TWS and Gust to one decimal place in table display
+        display_df['TWD'] = display_df['TWD'].map(lambda x: f"{x:.0f}")
         display_df['TWS'] = display_df['TWS'].map(lambda x: f"{x:.1f}")
         display_df['Gust'] = display_df['Gust'].map(lambda x: f"{x:.1f}")
 

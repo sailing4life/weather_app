@@ -22,7 +22,8 @@ if uploaded_file is not None:
 
     # Parse time column
     if 'W. Europe Daylight Time' in df.columns:
-        df['Time'] = pd.to_datetime(df['W. Europe Daylight Time'], errors='coerce', utc=True)
+        df['Time'] = pd.to_datetime(df['W. Europe Daylight Time']).dt.tz_localize(None)
+
     else:
         st.error("Required time column not found.")
         st.stop()

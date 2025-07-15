@@ -26,73 +26,79 @@ if uploaded_file:
     # Input model name
     model_name = st.text_input("Enter model name:", "UM-Global")
 
-    # Select time range to display
-    min_time = df['Time'].min()
-    max_time = df['Time'].max()
-    start_time, end_time = st.slider(
-        "Select time range to display:",
-        min_value=min_time,
-        max_value=max_time,
-        value=(min_time, max_time),
-        format="YYYY-MM-DD HH:mm"
-    )
+    # Time range inputs instead of slider
+    min_time = df['Time'].min().to_pydatetime()
+    max_time = df['Time'].max().to_pydatetime()
 
-    # Filter data by time range
-    df_filtered = df[(df['Time'] >= start_time) & (df['Time'] <= end_time)]
+    st.write("Select time range to display:")
+    start_time = st.datetime_input("Start Time", min_value=min_time, max_value=max_time, value=min_time)
+    end_time = st.datetime_input("End Time", min_value=min_time, max_value=max_time, value=max_time)
 
-    # Prepare columns for plotting
-    df_filtered['TWS'] = pd.to_numeric(df_filtered['kt'], errors='coerce')
-    df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind10m deg'], errors='coerce')
-    df_filtered['Gust'] = pd.to_numeric(df_filtered['kt.3'], errors='coerce')
+    if start_time > end_time:
+        st.error("Error: Start Time must be before End Time")
+    else:
+        # Filter data by time range
+        df_filtered = df[(df['Time'] >= pd.Timestamp(start_time, tz='UTC')) & (df['Time'] <= pd.Timestamp(end_time, tz='UTC'))]
 
-    # Drop rows with missing TWS or TWD or Gust
-    df_filtered = df_filtered.dropna(subset=['TWS', 'TWD', 'Gust'])
+        # Prepare columns for plotting
+        df_filtered['TWS'] = pd.to_numeric(df_filtered['kt'], errors='coerce')
+        df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind10m deg'], errors='coerce')
+        df_filtered['Gust'] = pd.to_numeric(df_filtered['kt.3'], errors='coerce')
 
-    # Plotting
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+        # Drop rows with missing data
+        df_filtered = df_filtered.dropna(subset=['TWS', 'TWD', 'Gust'])
 
-    ax1.set_title(f'TWS/Direction - Model: {model_name}', fontsize=14)
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('TWS / Gust (kt)', color='blue')
+        # Plotting
+        fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    ax1.plot(df_filtered['Time'], df_filtered['TWS'], 'b-', marker='.', label='TWS')
-    ax1.plot(df_filtered['Time'], df_filtered['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
+        ax1.set_title(f'TWS/Direction - Model: {model_name}', fontsize=14)
+        ax1.set_xlabel('Time')
+        ax1.set_ylabel('TWS / Gust (kt)', color='blue')
 
-    ax1.tick_params(axis='y', labelcolor='blue')
-    ax1.grid(True, which='both', axis='both', linestyle='--', linewidth=0.5)
+        ax1.plot(df_filtered['Time'], df_filtered['TWS'], 'b-', marker='.', label='TWS')
+        ax1.plot(df_filtered['Time'], df_filtered['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
 
-    # Labels for TWS points
-    for x, y in zip(df_filtered['Time'], df_filtered['TWS']):
-        ax1.text(x, y + 0.3, f'{y:.1f}', color='blue', fontsize=8, ha='center')
+        ax1.tick_params(axis='y', labelcolor='blue')
+        ax1.grid(True, which='both', axis='both', linestyle='--', linewidth=0.5)
 
-    # Labels for Gust points
-    for x, y in zip(df_filtered['Time'], df_filtered['Gust']):
-        ax1.text(x, y + 0.3, f'{y:.1f}', color='lightblue', fontsize=8, ha='center')
+        # Labels for TWS points
+        for x, y in zip(df_filtered['Time'], df_filtered['TWS']):
+            ax1.text(x, y + 0.3, f'{y:.1f}', color='blue', fontsize=8, ha='center')
 
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('TWD (°)', color='red')
-    ax2.plot(df_filtered['Time'], df_filtered['TWD'], 'r-', marker='.', label='TWD')
-    ax2.tick_params(axis='y', labelcolor='red')
+        # Labels for Gust points
+        for x, y in zip(df_filtered['Time'], df_filtered['Gust']):
+            ax1.text(x, y + 0.3, f'{y:.1f}', color='lightblue', fontsize=8, ha='center')
 
-    # Labels for TWD points
-    for x, y in zip(df_filtered['Time'], df_filtered['TWD']):
-        ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('TWD (°)', color='red')
+        ax2.plot(df_filtered['Time'], df_filtered['TWD'], 'r-', marker='.', label='TWD')
+        ax2.tick_params(axis='y', labelcolor='red')
 
-    # Format X-axis: only date and time
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-    fig.autofmt_xdate()
+        # Labels for TWD points
+        for x, y in zip(df_filtered['Time'], df_filtered['TWD']):
+            ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
 
-    st.pyplot(fig)
+        # Format X-axis: only date and time
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+        fig.autofmt_xdate()
 
-    # Data Table with color gradient on TWS
-    st.subheader("Filtered Data Table")
-    display_df = df_filtered[['Time', 'TWS', 'TWD', 'Gust']].copy()
-    display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
+        st.pyplot(fig)
 
-    cmap = mcolors.LinearSegmentedColormap.from_list('blue_green_red', ['blue', 'green', 'red'])
-    styled_df = display_df.style.background_gradient(cmap=cmap, subset=['TWS'], axis=0, vmin=display_df['TWS'].min(), vmax=display_df['TWS'].max())
+        # Data Table with color gradient on TWS
+        st.subheader("Filtered Data Table")
+        display_df = df_filtered[['Time', 'TWS', 'TWD', 'Gust']].copy()
+        display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
 
-    st.dataframe(styled_df)
+        cmap = mcolors.LinearSegmentedColormap.from_list('blue_green_red', ['blue', 'green', 'red'])
+        styled_df = display_df.style.background_gradient(
+            cmap=cmap,
+            subset=['TWS'],
+            axis=0,
+            vmin=display_df['TWS'].min(),
+            vmax=display_df['TWS'].max()
+        )
+
+        st.dataframe(styled_df)
 
 else:
     st.info("Please upload a CSV file to start.")

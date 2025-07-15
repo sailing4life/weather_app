@@ -82,12 +82,9 @@ if uploaded_file:
 
         st.pyplot(fig)
 
-        # Data Table with color gradient on TWS from 5 to 25 knots
-        st.subheader("Filtered Data Table")
+        # Prepare the display dataframe
         display_df = df_filtered[['Time', 'TWD', 'TWS', 'Gust']].copy()
         display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
-
-        # Format TWD, TWS and Gust to one decimal place in table display
         display_df['TWD'] = display_df['TWD'].map(lambda x: f"{x:.0f}")
         display_df['TWS'] = display_df['TWS'].map(lambda x: f"{x:.1f}")
         display_df['Gust'] = display_df['Gust'].map(lambda x: f"{x:.1f}")
@@ -95,13 +92,22 @@ if uploaded_file:
         cmap = mcolors.LinearSegmentedColormap.from_list('blue_green_red', ['blue', 'green', 'red'])
         styled_df = display_df.style.background_gradient(
             cmap=cmap,
-            subset=['TWS','Gust'],
+            subset=['TWS', 'Gust'],
             axis=0,
             vmin=5,
             vmax=25
         )
 
-        st.dataframe(styled_df)
+        st.subheader("Filtered Data Table (as image)")
+
+        # Save styled DataFrame to image in-memory buffer
+        buf = io.BytesIO()
+        dfi.export(styled_df, buf, table_conversion='matplotlib')
+        buf.seek(0)
+
+        # Load image with PIL and display it
+        img = Image.open(buf)
+        st.image(img)
 
 
     else:

@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, time
 import matplotlib.colors as mcolors
+import dataframe_image as dfi
+from PIL import Image
+import io
 
 st.title("Weather Data Visualization App")
 

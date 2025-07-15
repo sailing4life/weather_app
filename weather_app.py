@@ -39,29 +39,46 @@ if uploaded_file is not None:
     df['Gust'] = df['kt.3']
     df = df.dropna(subset=['TWS', 'TWD'])
 
+       # Drop rows with invalid times
+    df = df.dropna(subset=['Time'])
+
+    # Select time range
+    min_time = df['Time'].min()
+    max_time = df['Time'].max()
+    start_time, end_time = st.slider(
+        "Select time range to display:",
+        min_value=min_time,
+        max_value=max_time,
+        value=(min_time, max_time),
+        format="HH:mm:ss - MMM d"
+    )
+
+    # Filter data to selected time range
+    df_filtered = df[(df['Time'] >= start_time) & (df['Time'] <= end_time)]
+
     # Plotting
     fig, ax1 = plt.subplots(figsize=(10, 6))
     ax1.set_title(f'TWS/Direction\nModel: {model_name}', fontsize=12)
     ax1.set_xlabel('Time')
     ax1.set_ylabel('TWS / Gust (kt)', color='blue')
 
-    ax1.plot(df['Time'], df['TWS'], 'b-', marker='.', label='TWS')
-    ax1.plot(df['Time'], df['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
+    ax1.plot(df_filtered['Time'], df_filtered['TWS'], 'b-', marker='.', label='TWS')
+    ax1.plot(df_filtered['Time'], df_filtered['Gust'], color='lightblue', linestyle='--', marker='x', label='Gust')
     ax1.tick_params(axis='y', labelcolor='blue')
     ax1.grid(True, which='both', axis='both', linestyle='--', linewidth=0.5)
 
-    for x, y in zip(df['Time'], df['TWS']):
+    for x, y in zip(df_filtered['Time'], df_filtered['TWS']):
         ax1.text(x, y + 0.3, f'{y:.1f}', color='blue', fontsize=8, ha='center')
 
-    for x, y in zip(df['Time'], df['Gust']):
+    for x, y in zip(df_filtered['Time'], df_filtered['Gust']):
         ax1.text(x, y + 0.3, f'{y:.1f}', color='lightblue', fontsize=8, ha='center')
 
     ax2 = ax1.twinx()
     ax2.set_ylabel('TWD (°)', color='red')
-    ax2.plot(df['Time'], df['TWD'], 'r-', marker='.', label='TWD')
+    ax2.plot(df_filtered['Time'], df_filtered['TWD'], 'r-', marker='.', label='TWD')
     ax2.tick_params(axis='y', labelcolor='red')
 
-    for x, y in zip(df['Time'], df['TWD']):
+    for x, y in zip(df_filtered['Time'], df_filtered['TWD']):
         ax2.text(x, y + 3, f'{int(y)}', color='red', fontsize=8, ha='center')
 
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
@@ -69,5 +86,6 @@ if uploaded_file is not None:
     fig.autofmt_xdate()
 
     st.pyplot(fig)
+
 else:
     st.info("Please upload a CSV file to begin.")

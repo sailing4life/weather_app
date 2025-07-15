@@ -41,12 +41,22 @@ if uploaded_file is not None:
     df = df.dropna(subset=['TWS', 'TWD'])
 
        # Drop rows with invalid times
-    df = df.dropna(subset=['Time'])
+    
+    df['Time'] = pd.to_datetime(df['W. Europe Daylight Time'], errors='coerce')  # convert with error handling
+    df = df.dropna(subset=['Time'])  # remove rows where time couldn't be parsed
+    df['Time'] = df['Time'].dt.tz_localize(None)  # remove timezone if any
 
     # Select time range
     min_time = df['Time'].min()
     max_time = df['Time'].max()
-    start_time, end_time = st.slider("Select time range to display:", min_value=min_time,max_value=max_time,value=(min_time, max_time),format="HH:mm:ss - MMM d")
+
+    start_time, end_time = st.slider(
+        "Select time range to display:",
+        min_value=min_time,
+        max_value=max_time,
+        value=(min_time, max_time),
+        format="HH:mm - MMM d"
+    )
 
     # Filter data to selected time range
     df_filtered = df[(df['Time'] >= start_time) & (df['Time'] <= end_time)]

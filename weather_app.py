@@ -50,13 +50,7 @@ if uploaded_file is not None:
     min_time = df['Time'].min()
     max_time = df['Time'].max()
 
-    start_time, end_time = st.slider(
-        "Select time range to display:",
-        min_value=min_time,
-        max_value=max_time,
-        value=(min_time, max_time),
-        format="HH:mm - MMM d"
-    )
+    start_time, end_time = st.slider("Select time range to display:",min_value=min_time,max_value=max_time,value=(min_time, max_time),format="HH:mm - MMM d")
 
     # Filter data to selected time range
     df_filtered = df[(df['Time'] >= start_time) & (df['Time'] <= end_time)]

@@ -82,21 +82,26 @@ if uploaded_file:
 
         st.pyplot(fig)
 
-        # Data Table with color gradient on TWS
+        # Data Table with color gradient on TWS from 5 to 25 knots
         st.subheader("Filtered Data Table")
-        display_df = df_filtered[['Time', 'TWS', 'TWD', 'Gust']].copy()
+        display_df = df_filtered[['Time', 'TWD', 'TWS', 'Gust']].copy()
         display_df['Time'] = display_df['Time'].dt.strftime('%Y-%m-%d %H:%M')
+
+        # Format TWS and Gust to one decimal place in table display
+        display_df['TWS'] = display_df['TWS'].map(lambda x: f"{x:.1f}")
+        display_df['Gust'] = display_df['Gust'].map(lambda x: f"{x:.1f}")
 
         cmap = mcolors.LinearSegmentedColormap.from_list('blue_green_red', ['blue', 'green', 'red'])
         styled_df = display_df.style.background_gradient(
             cmap=cmap,
-            subset=['TWS'],
+            subset=['TWS','Gust'],
             axis=0,
-            vmin=display_df['TWS'].min(),
-            vmax=display_df['TWS'].max()
+            vmin=5,
+            vmax=25
         )
 
         st.dataframe(styled_df)
+
 
     else:
         st.error("CSV must contain the 'W. Europe Daylight Time' column.")

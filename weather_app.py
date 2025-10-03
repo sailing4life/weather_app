@@ -5,7 +5,7 @@ import matplotlib.dates as mdates
 from datetime import datetime, time
 import matplotlib.colors as mcolors
 
-st.title("Weather Data Visualization App")
+st.title("Meteogram Figures based on Expedition output")
 
 uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 
@@ -46,8 +46,19 @@ if uploaded_file:
 
         # Prepare columns for plotting
         df_filtered['TWS'] = pd.to_numeric(df_filtered['kt'], errors='coerce')
-        df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind10m deg'], errors='coerce')
-        df_filtered['Gust'] = pd.to_numeric(df_filtered['kt.3'], errors='coerce')
+        if 'Wind10m deg' in df_filtered.columns:
+            df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind10m deg'], errors='coerce')
+        else:
+            df_filtered['TWD'] = pd.to_numeric(df_filtered['Wind 10m'], errors='coerce')
+        
+        cols = df_filtered.columns
+        if 'Gust deg' in df_filtered.columns:
+            idx = cols.get_loc("Gust deg")   # index position of that column
+            next_col = cols[idx + 1]            # the one after it
+        else:
+            idx = cols.get_loc("Gust")   # index position of that column
+            next_col = cols[idx + 1]
+        df_filtered['Gust'] = pd.to_numeric(df_filtered[next_col], errors='coerce')
         df_filtered = df_filtered.dropna(subset=['TWS', 'TWD', 'Gust'])
 
         # Plotting
